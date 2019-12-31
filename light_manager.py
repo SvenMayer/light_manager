@@ -3,6 +3,7 @@
 import datetime
 import json
 import logging
+import os
 import random
 import requests
 import threading
@@ -12,12 +13,12 @@ import time
 RASPI_IP = "127.0.0.1"
 DECONZ_API_KEY = ##DECONZ-API-KEY##
 WEATHER_API_KEY = ##WEATHER-API-KEY##
-WEATER_CITY_ID  = ##CITY ID##
-LOGFILE = "/home/pi/light_manager/info.log"
+WEATER_CITY_ID  = ##CITY-ID##
+LOGFILE = os.path.join(os.path.dirname(__file__), "debug.log")
 
 logging.basicConfig(filename=LOGFILE,
                     format="%(asctime)s %(levelname)s: %(message)s",
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 random.seed(time.time())
 
 
@@ -55,13 +56,17 @@ class scheduler(threading.Thread):
         self._queue.sort()
         self._queue_lock.release()
         self._data_available.set()
+        logging.debug("Current queue: {0:s}".format(self._queue.__repr__()))
 
     def _pop_left(self):
+        logging.debug("pop left called.")
         self._queue.pop(0)
         if len(self._queue) == 0:
             self._data_available.clear()
         else:
             self._data_available.set()
+        logging.debug("pop left finished")
+        logging.debug("Current queue: {0:s}".format(self._queue.__repr__()))
 
     def clear(self):
         self._data_available.clear()
@@ -198,12 +203,15 @@ class lights:
                 + self._weather.sunset - self.SECONDS_FULL_COVER - 15*60)
 
     def _turn_off_and_schedule_new_off(self):
+        logging.debug("_turn_off_and_schedule_new_off started.")
         self._controller.off()
         t_nextoff = self._get_next_off_time()
         self._scheduler.add_event(
             t_nextoff, self._turn_off_and_schedule_new_off)
+        logging.debug("_turn_off_and_schedule_new_off started.")
 
     def _check_on_turn_on_if_on_time_current(self):
+        logging.debug("_check_on_turn_if_on_time_current started.")
         t_lightsoff = self._get_lights_on_time()
         now = time.time()
         t_refresh = now + self.LOOP_REFRESH
@@ -216,6 +224,7 @@ class lights:
             t_check = t_lightsoff
         self._scheduler.add_event(
             t_check, self._check_on_turn_on_if_on_time_current)
+        logging.debug("_check_on_turn_if_on_time_current finished.")
 
 
 class lights_api_controller:
