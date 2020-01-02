@@ -14,7 +14,7 @@ RASPI_IP = "127.0.0.1"
 DECONZ_API_KEY = ##DECONZ-API-KEY##
 WEATHER_API_KEY = ##WEATHER-API-KEY##
 WEATER_CITY_ID  = ##CITY-ID##
-LOGFILE = os.path.join(os.path.dirname(__file__), "debug.log")
+LOGFILE = os.path.splitext(__file__)[0] + ".log"
 
 logging.basicConfig(filename=LOGFILE,
                     format="%(asctime)s %(levelname)s: %(message)s",
