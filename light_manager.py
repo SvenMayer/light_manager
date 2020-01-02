@@ -173,9 +173,9 @@ class lights:
     def start(self):
         t_off = self._get_next_off_time()
         t_on = self._weather.sunset - self.SECONDS_FULL_COVER
-        if (t_on < time.time() and self._weather.sunset > time.time()):
+        if t_on < time.time():
             t_on = time.time()
-        else:
+        if t_on > self._weather.sunset:
             t_on = self._get_next_day_check_on_time()
         self._scheduler.add_event(
             t_on, self._check_on_turn_on_if_on_time_current)
