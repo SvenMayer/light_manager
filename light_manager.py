@@ -3,6 +3,7 @@
 import datetime
 import json
 import logging
+import numpy as np
 import os
 import random
 import requests
@@ -159,7 +160,8 @@ class weather:
 
 class lights:
     OFF_TIMES = OFF_TIME
-    SECONDS_FULL_COVER = 2. * 60. * 60.
+    SECONDS_FULL_COVER = 1. * 60. * 60.
+    SECONDS_TIME_OF_YEAR_ADJUSTMENT = 1. * 60. * 60.
     LOOP_REFRESH = 15 * 60.
     RANDOM_OFF_TIME = 30 * 60
 
@@ -172,7 +174,8 @@ class lights:
 
     def start(self):
         t_off = self._get_next_off_time()
-        t_on = self._weather.sunset - self.SECONDS_FULL_COVER
+        t_on = (self._weather.sunset - self.SECONDS_FULL_COVER
+            - self.SECONDS_TIME_OF_YEAR_ADJUSTMENT)
         if t_on < time.time():
             t_on = time.time()
         if t_on > self._weather.sunset:
@@ -184,7 +187,16 @@ class lights:
 
     def _get_lights_on_time(self):
         return (self._weather.sunset
-                - self.SECONDS_FULL_COVER * self._weather.clouds)
+                - self._get_weather_adjustment()
+                - self._get_year_adjustment())
+    
+    def _get_weather_adjustment(self):
+        return self.SECONDS_FULL_COVER * self._weather.clouds
+
+    def _get_year_adjustment(self):
+        day = time.localtime().tm_yday
+        return (self.SECONDS_TIME_OF_YEAR_ADJUSTMENT
+            * (1 + np.cos(2. * np.pi * (day + 7.)/365.)) / 2.)
 
     def _get_next_off_time(self):
         now = datetime.datetime.now()
@@ -205,7 +217,8 @@ class lights:
 
     def _get_next_day_check_on_time(self):
         return (24 * 60 * 60
-                + self._weather.sunset - self.SECONDS_FULL_COVER - 15*60)
+                + self._weather.sunset - self.SECONDS_FULL_COVER
+                - self.SECONDS_TIME_OF_YEAR_ADJUSTMENT - 15 * 60)
 
     def _turn_off_and_schedule_new_off(self):
         logging.debug("_turn_off_and_schedule_new_off started.")
