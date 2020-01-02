@@ -18,15 +18,16 @@ LOGFILE = os.path.join(os.path.dirname(__file__), "debug.log")
 
 logging.basicConfig(filename=LOGFILE,
                     format="%(asctime)s %(levelname)s: %(message)s",
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 random.seed(time.time())
 
 
 OFF_TIME = (
     (0, 22, 5),
     (1, 22, 5),
-    (2, 22, 5),
+    (2, 22, 7),
     (3, 22, 5),
+    (4, 22, 5),
     (5, 0, 0),
     (6, 0, 30),
     (6, 23, 28),
@@ -88,12 +89,14 @@ class scheduler(threading.Thread):
                 dt = 0
             if self._abort_event.wait(dt):
                 continue
-            self._queue_lock.acquire()
-            t, evt, args = self._queue[0]
             if t - time.time() <= self.DT_EPSILON:
-                evt(*args)
-            self._pop_left()
-            self._queue_lock.release()
+                self._queue_lock.acquire()
+                t, evt, args = self._queue.pop(0)
+                self._queue_lock.release()
+                try:
+                    evt(*args)
+                except Exception as e:
+                    logging.error("An error occured when executing event: {0}".format(e))
 
     def stop(self):
         self.clear()
@@ -169,8 +172,10 @@ class lights:
 
     def start(self):
         t_off = self._get_next_off_time()
-        t_on = self._get_lights_on_time()
-        if t_on < time.time():
+        t_on = self._weather.sunset - self.SECONDS_FULL_COVER
+        if (t_on < time.time() and self._weather.sunset > time.time()):
+            t_on = time.time()
+        else:
             t_on = self._get_next_day_check_on_time()
         self._scheduler.add_event(
             t_on, self._check_on_turn_on_if_on_time_current)
@@ -204,7 +209,7 @@ class lights:
 
     def _turn_off_and_schedule_new_off(self):
         logging.debug("_turn_off_and_schedule_new_off started.")
-        self._controller.off()
+        self._controller.state = False
         t_nextoff = self._get_next_off_time()
         self._scheduler.add_event(
             t_nextoff, self._turn_off_and_schedule_new_off)
@@ -212,16 +217,16 @@ class lights:
 
     def _check_on_turn_on_if_on_time_current(self):
         logging.debug("_check_on_turn_if_on_time_current started.")
-        t_lightsoff = self._get_lights_on_time()
+        t_lightson = self._get_lights_on_time()
         now = time.time()
         t_refresh = now + self.LOOP_REFRESH
-        if t_lightsoff < now:
-            self._controller.on()
+        if t_lightson <= now:
+            self._controller.state = True
             t_check = self._get_next_day_check_on_time()
-        elif t_lightsoff > t_refresh:
+        elif t_lightson > t_refresh:
             t_check = t_refresh
         else:
-            t_check = t_lightsoff
+            t_check = t_lightson
         self._scheduler.add_event(
             t_check, self._check_on_turn_on_if_on_time_current)
         logging.debug("_check_on_turn_if_on_time_current finished.")
@@ -246,11 +251,11 @@ class lights_api_controller:
 #            raise Exception("Cannot connect")
         return json.loads(res.text)["state"]["on"]
 
-    def on(self):
-        self.set_on(True)
-
-    def off(self):
-        self.set_on(False)
+    @state.setter
+    def state(self, set_state):
+        if not isinstance(set_state, bool):
+            raise("State needs to be of type \"bool\"")
+        return self.set_on(set_state)
 
     def set_on(self, on):
         logging.info("Sending command: \"Turn light {0:d} {1:s}\"".format(
@@ -264,8 +269,6 @@ class lights_api_controller:
             logging.error(
                     "Cannot set state for light {0:d} to {1:d}. Reason: {2:d}".format(
                             self._id, on, res.status_code))
-#            raise Exception("Cannot connect")
-        self._last_command = on
 
     def _build_url(self, *args):
         return "http://{ip:s}/api/{api_key:s}/{rest:s}".format(
@@ -277,6 +280,7 @@ if __name__ == "__main__":
     sched = scheduler()
     sched.start()
     weath = weather()
-    lts = lights(weath, lights_api_controller(1), sched)
+    l = lights_api_controller(1)
+    lts = lights(weath, l, sched)
     lts.start()
     sched.join()
