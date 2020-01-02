@@ -5,7 +5,6 @@
 * open /root/.vnc/config.d/vncserver-x11 and add at the end of the file
   + Authentication=VncAuth
   + Encryption=AlwaysOff
-  + Password=e0fd0472492935da
 * restart raspberry
 * use 'vncpasswd -service' to change password
 
@@ -29,8 +28,8 @@ To acquire an api-key sign into lights configuration. Go to settings and unlock 
 gateway. Send a post reqest to http://rapi_ip/api with the paramter "devicetype" set.
   import requests
   import json
-
-  raspi_id = "192.168.178.22"
+  
+  raspi_id = ##IP Address Raspberry##
   data = {"devicetype": "raspi_light_control"}
   res = requests.post("http://" + raspi_id + "/api", json.dumps(data)
   apikey = json.loads(res.text)[0]['success']['username']
