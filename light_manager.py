@@ -120,7 +120,7 @@ class weather:
     @property
     def clouds(self):
         self._check_for_update_weather()
-        return self._cloudcover / 100.
+        return self._cloudcover
 
     @property
     def sunset(self):
@@ -152,7 +152,7 @@ class weather:
             self._last_query = time.time()
             data = json.loads(res.text)
             self._sunset = data["sys"]["sunset"]
-            self._cloudcover = data["clouds"]["all"]
+            self._cloudcover = data["clouds"]["all"] / 100.
             logging.info("Weather info: cloudcover {0:3.2f}, sunset {1:.0f}".format(
                     self._cloudcover, self._sunset))
 
