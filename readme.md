@@ -79,3 +79,18 @@ Save iptables rules
 
 Activate iptables
   sudo service netfilter-persisten start
+
+## Save power
+### Disable HDMI
+Add
+  /usr/bin/tvservice -o
+to ''/etc/rc.local'' to disable HDMI on boot.
+
+### Disable LED
+Add
+  dtparam=act_led_trigger=none
+  dtparam=act_led_activelow=on
+to ''/boot/config.txt''
+
+## Disable Audio
+Can also be done in ''/boot/config.txt''.
