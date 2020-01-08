@@ -45,3 +45,37 @@ gateway. Send a post reqest to http://rapi_ip/api with the paramter "devicetype"
 1) Copy script to file system
 2) sudo crontab -e
 3) Add @reboot python3 /home/pi/.../...py &
+
+## Create new user to run the script
+1) Create user
+   sudo useradd -M lmanager
+2) make user a non log in user.
+   sudo usermod -L lmanager
+3) Copy script to user's home directory and start crontab as user
+   sudo crontab -u lmanager -e
+
+## Configure firewall to block external commands send to deconz
+  #!/bin/sh
+  
+  iptables -F
+  iptables -X
+  
+  iptables -P INPUT ACCEPT
+  iptables -P OUTPUT ACCEPT
+  iptables -P FORWARD ACCEPT
+  
+  iptables -A INPUT -i lo -j ACCEPT
+  iptables -A OUTPUT -o lo -j ACCEPT
+  
+  iptables -A INPUT -p tcp --dport 80 -j DROP
+  iptables -A OUTPUT -p tcp --sport 80 -j DROP
+
+Make iptables permanent
+  sudo apt  iptables-persistent
+
+Save iptables rules
+  iptables-save > /etc/iptables/rules.v4
+  ip6tables-save > /etc/iptables/rules.v6
+
+Activate iptables
+  sudo service netfilter-persisten start
